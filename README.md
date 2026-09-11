@@ -1,4 +1,4 @@
-﻿# Project Speech To Text & Diarization Rapat (Faster-Whisper - Fast Mode)
+# Project Speech To Text & Diarization Rapat (Faster-Whisper - Fast Mode)
 
 Aplikasi Speech-to-Text cerdas yang dirancang khusus untuk **kebutuhan rapat/meeting panjang (> 2 Jam)**, dilengkapi dengan **Speaker Diarization**, **Noise Reduction**, **Greedy Search (beam_size=1)**, alokasi hemat daya **4 Core CPU**, dan **Progress Bar dinamis** tanpa membebani layar terminal.
 
@@ -48,3 +48,9 @@ Aplikasi Speech-to-Text cerdas yang dirancang khusus untuk **kebutuhan rapat/mee
      ```powershell
      python transcribe.py "rapat.mp3" --no-noise-reduction
      ```
+
+---
+
+## Author & Kontribusi
+Dibuat dan dikembangkan oleh [Ilyas Abd Rohim](https://github.com/IlyasAbdRohim). Silakan berkontribusi atau membuat issue jika menemukan kendala.
+
