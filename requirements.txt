@@ -1,0 +1,5 @@
+﻿faster-whisper
+noisereduce
+soundfile
+scipy
+sherpa-onnx
