@@ -18,6 +18,10 @@ Aplikasi Speech-to-Text cerdas yang dirancang khusus untuk **kebutuhan rapat/mee
    - Menggunakan model PyAnnote Segmentation 3.0 + 3D-Speaker ONNX (100% lokal di CPU).
 5. **Noise Reduction & VAD**:
    - Membersihkan desis mikrofon, AC, kipas angin, dan membuang jeda hening rapat.
+6. **Notulensi Rapat Otomatis Per-Menu (Google Gemini AI)**:
+   - Menghasilkan ringkasan notulensi eksekutif terstruktur rapi ke file `.md`.
+   - Mengelompokkan poin bahasan, kendala, dan keputusan **per-menu aplikasi/modul sistem**, dilengkapi tabel **Action Items (Tugas, PIC, Target)**.
+   - Menggunakan API Google Gemini 2.5 Flash yang cepat dan gratis tanpa kartu kredit.
 
 ---
 
@@ -35,7 +39,17 @@ Aplikasi Speech-to-Text cerdas yang dirancang khusus untuk **kebutuhan rapat/mee
    ```
    *Secara default sudah otomatis menggunakan model `small`, `beam_size=1`, 4 core CPU, bahasa Indonesia (`id`), dan hasil langsung tersimpan ke `<nama_file>_transkripsi.txt`.*
 
-3. **Opsi Tambahan:**
+3. **Transkripsi Sekaligus Buat Notulensi Rapat Per-Menu (Gemini AI):**
+   ```powershell
+   python transcribe.py "rapat.mp3" --summarize
+   ```
+
+4. **Meringkas File Transkripsi yang Sudah Ada (Tanpa Transkripsi Ulang):**
+   ```powershell
+   python transcribe.py "rapat_transkripsi.txt"
+   ```
+
+5. **Opsi Tambahan:**
    - **Tentukan jumlah peserta jika diketahui (misal 3 orang):**
      ```powershell
      python transcribe.py "rapat.mp3" --num-speakers 3
@@ -51,6 +65,16 @@ Aplikasi Speech-to-Text cerdas yang dirancang khusus untuk **kebutuhan rapat/mee
 
 ---
 
+## Setup Google Gemini API (Gratis)
+1. Kunjungi [Google AI Studio](https://aistudio.google.com/) dan login dengan akun Google Anda.
+2. Klik **"Get API key"** -> **"Create API key"** dan salin API key Anda.
+3. Buat file `.env` di folder proyek ini (sejajar dengan `transcribe.py`) dan isi:
+   ```env
+   GEMINI_API_KEY=AIzaSy...
+   ```
+   *(File `.env` otomatis diabaikan oleh git sehingga kunci rahasia Anda tetap aman).*
+
+---
+
 ## Author & Kontribusi
 Dibuat dan dikembangkan oleh [Ilyas Abd Rohim](https://github.com/IlyasAbdRohim). Silakan berkontribusi atau membuat issue jika menemukan kendala.
-

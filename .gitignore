@@ -1,4 +1,4 @@
-﻿# Virtual Environment
+# Virtual Environment
 venv/
 env/
 ENV/
@@ -23,6 +23,7 @@ __pycache__/
 # Hasil Output Transkripsi
 *_transkripsi.txt
 *_jernih.wav
+*_ringkasan.md
 
 # Hugging Face & Model Cache
 models/

@@ -14,6 +14,13 @@ import soundfile as sf
 import sherpa_onnx
 import numpy as np
 
+try:
+    from google import genai
+    GEMINI_AVAILABLE = True
+except ImportError:
+    GEMINI_AVAILABLE = False
+
+
 def format_timestamp(seconds: float) -> str:
     """Mengubah detik menjadi format HH:MM:SS"""
     hrs = int(seconds // 3600)
@@ -102,6 +109,91 @@ def get_speaker_for_time(t: float, diar_segs) -> str:
             closest_spk = f"Pembicara {seg.speaker + 1}"
     return closest_spk
 
+def generate_meeting_summary(transcript_text: str, api_key: str = None) -> str:
+    """Merangkum hasil transkripsi rapat menjadi notulensi terstruktur per menu menggunakan Google Gemini API"""
+    if not GEMINI_AVAILABLE:
+        print("\n[Peringatan]: Paket 'google-genai' belum terpasang.")
+        return None
+
+    # Cari API key dari parameter, env var, atau file .env
+    if not api_key:
+        api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+    
+    if not api_key and os.path.exists(".env"):
+        try:
+            with open(".env", "r", encoding="utf-8-sig") as f:
+                for line in f:
+                    line = line.strip()
+                    if line.startswith("GEMINI_API_KEY="):
+                        api_key = line.split("=", 1)[1].strip().strip('"').strip("'")
+                        break
+        except Exception:
+            pass
+
+    if not api_key:
+        print("\n" + "=" * 68)
+        print("          PEMBERITAHUAN GOOGLE GEMINI API (RINGKASAN RAPAT)          ")
+        print("=" * 68)
+        print("Fitur ringkasan aktif, tetapi GEMINI_API_KEY belum ditemukan.")
+        print("Cara mendapatkan & mengaktifkannya (100% GRATIS):")
+        print("1. Buka: https://aistudio.google.com/ lalu login akun Google")
+        print("2. Klik 'Get API key' lalu salin kuncinya")
+        print("3. Buat file .env di folder ini dan isi:")
+        print("   GEMINI_API_KEY=AIzaSy...")
+        print("   (Atau jalankan perintah dengan opsi: --gemini-api-key 'AIzaSy...')")
+        print("=" * 68)
+        return None
+
+    sys.stdout.write("\n[Tahap Tambahan] Mengirim ke Google Gemini AI untuk merangkum per menu... ")
+    sys.stdout.flush()
+    try:
+        client = genai.Client(api_key=api_key)
+        prompt = f"""Kamu adalah Notulis Rapat Eksekutif profesional.
+Berikut adalah transkripsi rekaman percakapan rapat:
+
+{transcript_text}
+
+Tugasmu:
+Buatlah notulensi ringkasan rapat terstruktur dalam Bahasa Indonesia profesional.
+PENTING: Kelompokkan poin-poin penting, kendala, dan keputusan yang dibahas SECARA RAPI PER-MENU (Menu Aplikasi / Sistem / Fitur / Modul terkait).
+
+Format Output (Gunakan format Markdown berikut):
+# NOTULENSI RAPAT: [Nama/Topik Rapat]
+- Tanggal/Waktu: [Berdasarkan konteks atau hari ini]
+- Pembicara yang Terdeteksi: [Daftar pembicara]
+
+## 📌 Ringkasan Eksekutif
+[Ringkasan 2-3 kalimat mengenai tujuan dan kesimpulan umum rapat]
+
+## 🖥️ Pembahasan & Keputusan Per-Menu
+### 1. Menu: [Nama Menu / Modul 1]
+- **Pembahasan / Masalah**: ...
+- **Keputusan Disepakati**: ...
+
+### 2. Menu: [Nama Menu / Modul 2]
+- **Pembahasan / Masalah**: ...
+- **Keputusan Disepakati**: ...
+
+(Tambahkan menu lain jika ada)
+
+## ✅ Daftar Tindak Lanjut (Action Items)
+| No | Tindakan / Tugas | Menu Terkait | PIC / Pelaksana | Target |
+| :-: | :--- | :--- | :--- | :--- |
+| 1 | ... | ... | ... | ... |
+"""
+        for model_candidate in ["gemini-3.6-flash", "gemini-flash-latest", "gemini-2.5-flash"]:
+            try:
+                chat = client.chats.create(model=model_candidate)
+                response = chat.send_message(prompt)
+                print("Selesai (Berhasil dirangkum)!")
+                return response.text
+            except Exception:
+                continue
+        raise RuntimeError("Semua kandidat model Gemini Flash tidak dapat diakses.")
+    except Exception as e:
+        print(f"Gagal merangkum: {e}")
+        return None
+
 def transcribe_audio(
     audio_path: str,
     model_size: str = "small",
@@ -116,7 +208,9 @@ def transcribe_audio(
     save_cleaned_audio: bool = False,
     diarize: bool = True,
     num_speakers: int = 0,
-    show_text: bool = False
+    show_text: bool = False,
+    summarize: bool = False,
+    gemini_api_key: str = None
 ):
     if not os.path.exists(audio_path):
         print(f"Error: File audio '{audio_path}' tidak ditemukan.")
@@ -324,7 +418,22 @@ def transcribe_audio(
     print(f"* Waktu Transkripsi AI Saja    : {whisper_time:.1f} detik ({whisper_time/60:.1f} menit)")
     print(f"* Kecepatan Pemrosesan         : {speed_factor:.1f}x lebih cepat dari durasi audio asli")
     print(f"* Total Waktu Keseluruhan      : {total_time:.1f} detik ({total_time/60:.1f} menit)")
-    print(f"* Hasil Tersimpan Langsung di  : {output_file}")
+    print(f"* File Transkripsi Lengkap     : {output_file}")
+
+    # Tahap Tambahan: Ringkasan Notulensi Per Menu dengan Gemini AI
+    if summarize:
+        try:
+            with open(output_file, "r", encoding="utf-8") as f_read:
+                full_transcript = f_read.read()
+            summary_content = generate_meeting_summary(full_transcript, api_key=gemini_api_key)
+            if summary_content:
+                summary_file = f"{base_name}_ringkasan.md"
+                with open(summary_file, "w", encoding="utf-8") as f_sum:
+                    f_sum.write(summary_content)
+                print(f"* Notulensi Rapat (Per Menu)   : {summary_file}")
+        except Exception as e:
+            print(f"* Gagal membuat ringkasan AI   : {e}")
+
     print("=" * 68)
 
 if __name__ == "__main__":
@@ -341,9 +450,35 @@ if __name__ == "__main__":
     parser.add_argument("--no-noise-reduction", action="store_true", help="Nonaktifkan reduksi derau")
     parser.add_argument("--save-clean-audio", action="store_true", help="Simpan salinan audio yang telah dibersihkan (.wav)")
     parser.add_argument("--show-text", action="store_true", help="Tampilkan teks percakapan di terminal (default: False/langsung simpan file)")
+    parser.add_argument("--summarize", action="store_true", help="Buat notulensi rapat per menu otomatis menggunakan Google Gemini API")
+    parser.add_argument("--gemini-api-key", default=None, help="API Key Google Gemini (opsional jika sudah diset di .env atau env var)")
     parser.add_argument("--output", default=None, help="Nama file tujuan penyimpanan teks (.txt)")
     
     args = parser.parse_args()
+
+    # Jika file input berformat .txt, langsung proses ringkasan per-menu tanpa transkripsi ulang
+    if args.audio.lower().endswith(".txt"):
+        if not os.path.exists(args.audio):
+            print(f"Error: File transkripsi '{args.audio}' tidak ditemukan.")
+            sys.exit(1)
+        print("=" * 68)
+        print("      MODE RINGKASAN EKSEKUTIF PER-MENU DARI FILE TEKS (.TXT)       ")
+        print("=" * 68)
+        print(f"Membaca file transkripsi: {args.audio}")
+        with open(args.audio, "r", encoding="utf-8") as f_in:
+            transcript_text = f_in.read()
+        summary = generate_meeting_summary(transcript_text, api_key=args.gemini_api_key)
+        if summary:
+            base = os.path.splitext(args.audio)[0]
+            if base.endswith("_transkripsi"):
+                base = base[:-12]
+            summary_file = f"{base}_ringkasan.md"
+            with open(summary_file, "w", encoding="utf-8") as f_sum:
+                f_sum.write(summary)
+            print(f"Hasil Notulensi Rapat Disimpan di : {summary_file}")
+            print("=" * 68)
+        sys.exit(0)
+
     transcribe_audio(
         args.audio,
         model_size=args.model,
@@ -357,8 +492,12 @@ if __name__ == "__main__":
         save_cleaned_audio=args.save_clean_audio,
         diarize=not args.no_diarize,
         num_speakers=args.num_speakers,
-        show_text=args.show_text
+        show_text=args.show_text,
+        summarize=args.summarize,
+        gemini_api_key=args.gemini_api_key
     )
+
+
 
 
 
