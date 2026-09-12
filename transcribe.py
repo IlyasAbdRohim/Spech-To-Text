@@ -210,7 +210,8 @@ def transcribe_audio(
     num_speakers: int = 0,
     show_text: bool = False,
     summarize: bool = False,
-    gemini_api_key: str = None
+    gemini_api_key: str = None,
+    prompt: str = None
 ):
     if not os.path.exists(audio_path):
         print(f"Error: File audio '{audio_path}' tidak ditemukan.")
@@ -228,9 +229,12 @@ def transcribe_audio(
     print("=" * 68)
     print(f"File Audio       : {audio_path}")
     print(f"Ukuran Model     : {model_size.upper()}")
-    print(f"Mode Pencarian   : Greedy Search (beam_size={beam_size}) [Cepat & Hemat CPU]")
+    search_desc = f"Beam Search (beam_size={beam_size}) [Akurasi Tinggi]" if beam_size > 1 else f"Greedy Search (beam_size=1) [Cepat & Hemat CPU]"
+    print(f"Mode Pencarian   : {search_desc}")
     print(f"Alokasi CPU      : {cpu_threads} Cores (Multi-Thread)")
     print(f"Bahasa Target    : {language if language else 'Otomatis (Auto-detect)'}")
+    if prompt:
+        print(f"Kamus Istilah    : {prompt}")
     print(f"Device           : {device.upper()} (compute_type='{compute_type}')")
     print(f"Noise Reduction  : {'Aktif (' + str(int(noise_decrease*100)) + '%)' if reduce_noise else 'Non-aktif'}")
     print(f"Filter Hening    : {'Aktif (Silero VAD)' if use_vad else 'Non-aktif'}")
@@ -338,6 +342,7 @@ def transcribe_audio(
             audio_processed,
             beam_size=beam_size,
             language=language,
+            initial_prompt=prompt,
             word_timestamps=True if diarize else False,
             vad_filter=use_vad,
             vad_parameters=dict(min_silence_duration_ms=500) if use_vad else None
@@ -452,6 +457,7 @@ if __name__ == "__main__":
     parser.add_argument("--show-text", action="store_true", help="Tampilkan teks percakapan di terminal (default: False/langsung simpan file)")
     parser.add_argument("--summarize", action="store_true", help="Buat notulensi rapat per menu otomatis menggunakan Google Gemini API")
     parser.add_argument("--gemini-api-key", default=None, help="API Key Google Gemini (opsional jika sudah diset di .env atau env var)")
+    parser.add_argument("--prompt", default=None, help="Kamus istilah/nama khusus untuk memandu akurasi ejaan kata Whisper (contoh: 'Pak Dida, Master Produk, SSD, Kasir')")
     parser.add_argument("--output", default=None, help="Nama file tujuan penyimpanan teks (.txt)")
     
     args = parser.parse_args()
@@ -494,7 +500,8 @@ if __name__ == "__main__":
         num_speakers=args.num_speakers,
         show_text=args.show_text,
         summarize=args.summarize,
-        gemini_api_key=args.gemini_api_key
+        gemini_api_key=args.gemini_api_key,
+        prompt=args.prompt
     )
 
 
