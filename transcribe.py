@@ -218,9 +218,12 @@ def transcribe_audio(
         print("Penggunaan: python transcribe.py [path_file_audio]")
         return
 
-    base_name = os.path.splitext(audio_path)[0]
+    audio_file_title = os.path.splitext(os.path.basename(audio_path))[0]
+    output_dir = os.path.join("Hasil", audio_file_title)
+    os.makedirs(output_dir, exist_ok=True)
+
     if not output_file:
-        output_file = f"{base_name}_transkripsi.txt"
+        output_file = os.path.join(output_dir, f"{audio_file_title}_transkripsi.txt")
 
     compute_type = "float16" if device == "cuda" else "int8"
 
@@ -228,6 +231,7 @@ def transcribe_audio(
     print("      Speech to Text & Diarization Rapat (Optimized Fast Mode)      ")
     print("=" * 68)
     print(f"File Audio       : {audio_path}")
+    print(f"Folder Hasil     : {output_dir}")
     print(f"Ukuran Model     : {model_size.upper()}")
     search_desc = f"Beam Search (beam_size={beam_size}) [Akurasi Tinggi]" if beam_size > 1 else f"Greedy Search (beam_size=1) [Cepat & Hemat CPU]"
     print(f"Mode Pencarian   : {search_desc}")
@@ -293,7 +297,7 @@ def transcribe_audio(
             finish_progress_bar("[Tahap 1/3] Noise Reduction", nr_elapsed)
 
             if save_cleaned_audio:
-                clean_audio_path = f"{base_name}_jernih.wav"
+                clean_audio_path = os.path.join(output_dir, f"{audio_file_title}_jernih.wav")
                 sf.write(clean_audio_path, audio_processed, 16000)
                 print(f"-> Salinan audio jernih disimpan ke: {clean_audio_path}")
 
@@ -419,6 +423,7 @@ def transcribe_audio(
 
     print("-" * 68)
     print(f"RINGKASAN HASIL:")
+    print(f"* Folder Hasil Penyimpanan     : {output_dir}")
     print(f"* Total Baris Kalimat Terdata  : {total_lines_count} baris dialog")
     print(f"* Waktu Transkripsi AI Saja    : {whisper_time:.1f} detik ({whisper_time/60:.1f} menit)")
     print(f"* Kecepatan Pemrosesan         : {speed_factor:.1f}x lebih cepat dari durasi audio asli")
@@ -432,7 +437,7 @@ def transcribe_audio(
                 full_transcript = f_read.read()
             summary_content = generate_meeting_summary(full_transcript, api_key=gemini_api_key)
             if summary_content:
-                summary_file = f"{base_name}_ringkasan.md"
+                summary_file = os.path.join(output_dir, f"{audio_file_title}_ringkasan.md")
                 with open(summary_file, "w", encoding="utf-8") as f_sum:
                     f_sum.write(summary_content)
                 print(f"* Notulensi Rapat (Per Menu)   : {summary_file}")
@@ -473,14 +478,25 @@ if __name__ == "__main__":
         print(f"Membaca file transkripsi: {args.audio}")
         with open(args.audio, "r", encoding="utf-8") as f_in:
             transcript_text = f_in.read()
+        file_base = os.path.splitext(os.path.basename(args.audio))[0]
+        if file_base.endswith("_transkripsi"):
+            meeting_name = file_base[:-12]
+        else:
+            meeting_name = file_base
+
+        input_dir = os.path.dirname(args.audio)
+        if input_dir and os.path.abspath(input_dir) != os.path.abspath("."):
+            target_dir = input_dir
+        else:
+            target_dir = os.path.join("Hasil", meeting_name)
+            os.makedirs(target_dir, exist_ok=True)
+
         summary = generate_meeting_summary(transcript_text, api_key=args.gemini_api_key)
         if summary:
-            base = os.path.splitext(args.audio)[0]
-            if base.endswith("_transkripsi"):
-                base = base[:-12]
-            summary_file = f"{base}_ringkasan.md"
+            summary_file = os.path.join(target_dir, f"{meeting_name}_ringkasan.md")
             with open(summary_file, "w", encoding="utf-8") as f_sum:
                 f_sum.write(summary)
+            print(f"Folder Hasil                      : {target_dir}")
             print(f"Hasil Notulensi Rapat Disimpan di : {summary_file}")
             print("=" * 68)
         sys.exit(0)

@@ -21,7 +21,9 @@ Aplikasi Speech-to-Text cerdas yang dirancang khusus untuk **kebutuhan rapat/mee
 6. **Notulensi Rapat Otomatis Per-Menu (Google Gemini AI)**:
    - Menghasilkan ringkasan notulensi eksekutif terstruktur rapi ke file `.md`.
    - Mengelompokkan poin bahasan, kendala, dan keputusan **per-menu aplikasi/modul sistem**, dilengkapi tabel **Action Items (Tugas, PIC, Target)**.
-   - Menggunakan API Google Gemini 2.5 Flash yang cepat dan gratis tanpa kartu kredit.
+   - Menggunakan API Google Gemini 2.5/3.6 Flash yang cepat dan gratis tanpa kartu kredit.
+7. **Manajemen File Rapi Otomatis (`Hasil/<Nama Rekaman>/`)**:
+   - Semua file luaran (transkrip `.txt`, notulensi `.md`, audio `.wav`) otomatis dikelompokkan ke dalam folder `Hasil/[Nama Rekaman]/` sehingga folder utama tetap bersih dan rapi.
 
 ---
 
@@ -37,7 +39,7 @@ Aplikasi Speech-to-Text cerdas yang dirancang khusus untuk **kebutuhan rapat/mee
    ```powershell
    python transcribe.py "D:\Meeting\rekaman_rapat.mp3"
    ```
-   *Secara default sudah otomatis menggunakan model `small`, `beam_size=1`, 4 core CPU, bahasa Indonesia (`id`), dan hasil langsung tersimpan ke `<nama_file>_transkripsi.txt`.*
+   *Secara default otomatis menggunakan model `small`, `beam_size=1`, 4 core CPU, bahasa Indonesia (`id`), dan hasil langsung tersimpan rapi di `Hasil/rekaman_rapat/rekaman_rapat_transkripsi.txt`.*
 
 3. **Transkripsi Sekaligus Buat Notulensi Rapat Per-Menu (Gemini AI):**
    ```powershell
@@ -46,10 +48,18 @@ Aplikasi Speech-to-Text cerdas yang dirancang khusus untuk **kebutuhan rapat/mee
 
 4. **Meringkas File Transkripsi yang Sudah Ada (Tanpa Transkripsi Ulang):**
    ```powershell
-   python transcribe.py "rapat_transkripsi.txt"
+   python transcribe.py "Hasil/rapat/rapat_transkripsi.txt"
    ```
 
-5. **Opsi Tambahan:**
+5. **Opsi Tambahan untuk Meningkatkan Akurasi:**
+   - **Kamus Istilah Rapat / Nama Orang (`--prompt`)**:
+     ```powershell
+     python transcribe.py "rapat.mp3" --prompt "Pak Dida, Pak Woko, Master Produk, Kasir Penjualan, SSD, SQL"
+     ```
+   - **Mode Pencarian Akurasi Tinggi (`--beam-size 5`)**:
+     ```powershell
+     python transcribe.py "rapat.mp3" --beam-size 5
+     ```
    - **Tentukan jumlah peserta jika diketahui (misal 3 orang):**
      ```powershell
      python transcribe.py "rapat.mp3" --num-speakers 3
